@@ -21,7 +21,7 @@ Train the model and run the main application with `dfm.py`.
 
 ## Model Overview
 
-A convolutional autoencoder is trained on the images, then PCA is preformed on their latent space representations.
+A convolutional autoencoder is trained on the images, then PCA is performed on their latent space representations.
 
 <img src='assets/model.png' width='530'/>
 
