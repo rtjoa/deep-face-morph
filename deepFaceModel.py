@@ -1,6 +1,7 @@
 import numpy as np
 from tensorflow import keras
 from tensorflow.keras.layers import Conv2D, Conv2DTranspose, Flatten, Dense, Reshape
+from tensorflow.keras.callbacks import EarlyStopping
 import os
 import cv2
 import json
@@ -69,7 +70,7 @@ class DeepFaceModel:
         self.built = True
     
     # Train model from directory of images
-    def train(self, dataFolder, epochs, split_validation=False):
+    def train(self, dataFolder, epochs, split_validation=False, patience=999):
         assert self.built, "Model not built"
         rawImages, self.labels = loadImages(dataFolder)
         if split_validation:
@@ -77,10 +78,17 @@ class DeepFaceModel:
             random.shuffle(rawImages)
             trainImages = rawImages[n_validation:]
             valImages = rawImages[:n_validation]
+            
+            es = EarlyStopping(
+                monitor='val_loss',
+                patience=patience,
+                restore_best_weights=True)
+            
             self.autoencoder.fit(x=trainImages, 
                 y=trainImages,
                 validation_data=(valImages, valImages),
-                epochs=epochs)
+                epochs=epochs,
+                callbacks=[es])
         else:
             self.autoencoder.fit(x=rawImages, 
                 y=rawImages,
