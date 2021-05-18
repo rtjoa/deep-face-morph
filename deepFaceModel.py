@@ -4,6 +4,7 @@ from tensorflow.keras.layers import Conv2D, Conv2DTranspose, Flatten, Dense, Res
 import os
 import cv2
 import json
+import random
 
 # Loads images and their names (truncates file extension)
 def loadImages(directory):
@@ -68,12 +69,22 @@ class DeepFaceModel:
         self.built = True
     
     # Train model from directory of images
-    def train(self, dataFolder, epochs):
+    def train(self, dataFolder, epochs, split_validation=False):
         assert self.built, "Model not built"
         rawImages, self.labels = loadImages(dataFolder)
-        self.autoencoder.fit(x=rawImages, 
-            y=rawImages, 
-            epochs=epochs)
+        if split_validation:
+            n_validation = len(rawImages) // 10
+            random.shuffle(rawImages)
+            trainImages = rawImages[n_validation:]
+            valImages = rawImages[:n_validation]
+            self.autoencoder.fit(x=trainImages, 
+                y=trainImages,
+                validation_data=(valImages, valImages),
+                epochs=epochs)
+        else:
+            self.autoencoder.fit(x=rawImages, 
+                y=rawImages,
+                epochs=epochs)
         latents = self.encoder.predict(rawImages)
         self.transformedLatents, self.eigenBasis, self.eigenValues = pca(latents)
         self.trained = True
