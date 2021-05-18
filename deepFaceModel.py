@@ -12,9 +12,14 @@ def loadImages(directory):
     
     for filename in os.listdir(directory):
         im = cv2.imread(directory + filename)
-        if not im is None:
-            rawImages.append(im)
-            names.append('.'.join(filename.split('.')[:-1]))
+        if im is None:
+            print(f"Ignoring {filename}, could not read as image.")
+        else:
+            if rawImages and im.shape != rawImages[0].shape:
+                print(f"Ignoring {filename}, as it has a different shape than first image read in.")
+            else:
+                rawImages.append(im)
+                names.append('.'.join(filename.split('.')[:-1]))
     
     return np.stack(rawImages), names
 
