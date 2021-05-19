@@ -15,7 +15,7 @@ OUTPUT_SIZE = (128, 128)
 
 face_cascades = [cv2.CascadeClassifier(CLASSIFIER_DIR + file) for file in CLASSIFIER_FILES]
 
-def preprocess(image, face_cascades, min_neighbors_tests, output_size):
+def preprocess(image, face_cascades=face_cascades, min_neighbors_tests=MIN_NEIGHBORS_TESTS, output_size=OUTPUT_SIZE):
     faces = detect_faces(image, face_cascades, min_neighbors_tests)
     if not len(faces):
         raise ValueError("Face not found.")
