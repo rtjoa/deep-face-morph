@@ -8,22 +8,22 @@ import json
 import random
 
 # Loads images and their names (truncates file extension)
-def loadImages(directory):
-    rawImages = []
+def load_images(directory):
+    raw_images = []
     names = []
-    
+
     for filename in os.listdir(directory):
         im = cv2.imread(directory + filename)
         if im is None:
             print(f"Ignoring {filename}, could not read as image.")
         else:
-            if rawImages and im.shape != rawImages[0].shape:
+            if raw_images and im.shape != raw_images[0].shape:
                 print(f"Ignoring {filename}, as it has a different shape than first image read in.")
             else:
-                rawImages.append(im)
+                raw_images.append(im)
                 names.append('.'.join(filename.split('.')[:-1]))
-    
-    return np.stack(rawImages), names
+
+    return np.stack(raw_images), names
 
 # Perform PCA on data, returns transformed data, eigen basis, and eigen values
 def pca(X):
@@ -36,113 +36,132 @@ class DeepFaceModel:
     def __init__(self):
         self.built = False
         self.trained = False
-    
+
     # Create untrained encoder and decoder from model params
-    def build(self, inputShape, latentDim, filterIncreasePerConv, convolutions, stride, kernelSize):   
-        
+    def build(self, input_shape, latent_dim, filter_increase_per_conv, convolutions, stride, kernel_size):
         # Create encoder model
-        inputs = keras.Input(shape = inputShape)
+        inputs = keras.Input(shape = input_shape)
         x = inputs
         for i in range(convolutions):
-            x = Conv2D(filters=(i+1)*filterIncreasePerConv, kernel_size=kernelSize, strides=stride, padding='same', activation='relu')(x)
+            layer = Conv2D(
+                filters=(i+1)*filter_increase_per_conv,
+                kernel_size=kernel_size,
+                strides=stride,
+                padding='same',
+                activation='relu'
+                )
+            x = layer(x)
         x = Flatten()(x)
-        latent = Dense(latentDim)(x)
-        self.encoder = keras.Model(inputs = inputs, outputs = latent, name='encoder')
-        
-        #Create decoder model
-        decoderInputs = keras.Input(shape = (latentDim,))
-        decoderReshapeDims = np.array(self.encoder.layers[-2].input.shape[1:])
-        x = Dense(np.prod(decoderReshapeDims))(decoderInputs)
-        x = Reshape(decoderReshapeDims)(x)
+        latent = Dense(latent_dim)(x)
+        self.encoder = keras.Model(inputs=inputs, outputs=latent, name='encoder')
+
+        # Create decoder model
+        decoder_inputs = keras.Input(shape = (latent_dim,))
+        decoder_reshape_dims = np.array(self.encoder.layers[-2].input.shape[1:])
+        x = Dense(np.prod(decoder_reshape_dims))(decoder_inputs)
+        x = Reshape(decoder_reshape_dims)(x)
         for i in range(convolutions,1,-1):
-            x = Conv2DTranspose((i-1)*filterIncreasePerConv, kernelSize, stride, 'same', activation="relu")(x)
-        x = Conv2DTranspose(3, kernelSize, stride, 'same', activation='relu')(x)
-        self.decoder = keras.Model(inputs=decoderInputs, outputs=x, name='decoder')
-        
-        self.assembleAutoencoder()
-    
+            layer = Conv2DTranspose(
+                (i-1)*filter_increase_per_conv,
+                kernel_size,
+                stride,
+                'same',
+                activation="relu"
+                )
+            x = layer(x)
+        x = Conv2DTranspose(3, kernel_size, stride, 'same', activation='relu')(x)
+        self.decoder = keras.Model(inputs=decoder_inputs, outputs=x, name='decoder')
+
+        self.assemble_autoencoder()
+
     # Combine encoder/decoder into autoencoder
-    def assembleAutoencoder(self):
-        self.autoencoder = keras.Model(name='autoencoder', inputs = self.encoder.input, outputs = self.decoder(self.encoder(self.encoder.input)))
+    def assemble_autoencoder(self):
+        self.autoencoder = keras.Model(
+            name='autoencoder',
+            inputs=self.encoder.input,
+            outputs=self.decoder(self.encoder(self.encoder.input)))
         self.autoencoder.compile(optimizer='adam',
             loss='mse',
             metrics=['accuracy'])
         self.built = True
-    
+
     # Train model from directory of images
-    def train(self, dataFolder, epochs, split_validation=False, patience=999):
+    def train(self, data_path, epochs, split_validation=False, patience=999):
         assert self.built, "Model not built"
-        rawImages, self.labels = loadImages(dataFolder)
+        raw_images, self.labels = load_images(data_path)
         if split_validation:
-            n_validation = len(rawImages) // 10
-            random.shuffle(rawImages)
-            trainImages = rawImages[n_validation:]
-            valImages = rawImages[:n_validation]
-            
+            n_validation = len(raw_images) // 20
+            random.shuffle(raw_images)
+            train_images = raw_images[n_validation:]
+            val_images = raw_images[:n_validation]
+
             es = EarlyStopping(
                 monitor='val_loss',
                 patience=patience,
-                restore_best_weights=True)
-            
-            self.autoencoder.fit(x=trainImages, 
-                y=trainImages,
-                validation_data=(valImages, valImages),
+                restore_best_weights=True
+                )
+
+            self.autoencoder.fit(x=train_images,
+                y=train_images,
+                validation_data=(val_images, val_images),
                 epochs=epochs,
-                callbacks=[es])
+                callbacks=[es]
+                )
         else:
-            self.autoencoder.fit(x=rawImages, 
-                y=rawImages,
-                epochs=epochs)
-        latents = self.encoder.predict(rawImages)
-        self.transformedLatents, self.eigenBasis, self.eigenValues = pca(latents)
+            self.autoencoder.fit(x=raw_images,
+                y=raw_images,
+                epochs=epochs
+                )
+        latents = self.encoder.predict(raw_images)
+        self.transformed_latents, self.eigenbasis, self.eigenvalues = pca(latents)
         self.trained = True
-    
+
     # Reconstruct a visualizable image from a transformed, latent vector
-    def transformedLatentToImg(self, z):
+    def transformed_latent_to_img(self, z):
         assert self.train, "Model not trained"
-        latent = self.eigenBasis @ z
+        latent = self.eigenbasis @ z
         decoded = self.decoder.predict(np.array([latent]))[0]
         return decoded[:,:,::-1].clip(0,255).astype(np.uint8)
-    
+
     # Sort people as (name, trasformed latent vector) tuples
     # by similarity to provided transformed latent vector
     def lookalikes(self, z):
         assert self.train, "Model not trained"
-        people = list(zip(self.labels, self.transformedLatents))
+        people = list(zip(self.labels, self.transformed_latents))
         people = [{'name': p[0], 'z': p[1]} for p in people]
         people.sort(key=lambda p: np.square(z - p['z']).sum())
         return people
-    
+
     # Return top lookalike to provided transformed latent vector
     def lookalike(self, z):
         return self.lookalikes(z)[0]
-    
+
     # Save model to directory
     def save(self, directory):
         assert self.train, "Model not trained"
         self.encoder.save(directory + '\\encoder')
         self.decoder.save(directory + '\\decoder')
-        np.savetxt(directory + '\\transformedLatents', self.transformedLatents)
-        np.savetxt(directory + '\\eigenValues', self.eigenValues)
-        np.savetxt(directory + '\\eigenBasis', self.eigenBasis)
+        np.savetxt(directory + '\\transformedLatents', self.transformed_latents)
+        np.savetxt(directory + '\\eigenValues', self.eigenvalues)
+        np.savetxt(directory + '\\eigenBasis', self.eigenbasis)
         with open(directory + '/labels','w') as f:
             f.write(json.dumps(self.labels))
-    
+
     # Load full trained model from directory
     @staticmethod
     def load(directory):
         dfm = DeepFaceModel()
-        dfm.loadModel(directory)
-        dfm.transformedLatents = np.loadtxt(directory + '/transformedLatents')
-        dfm.eigenValues = np.loadtxt(directory + '/eigenValues')
-        dfm.eigenBasis = np.loadtxt(directory + '/eigenBasis')
+        dfm.load_model(directory)
+        dfm.transformed_latents = np.loadtxt(directory + '/transformedLatents')
+        dfm.eigenvalues = np.loadtxt(directory + '/eigenValues')
+        dfm.eigenbasis = np.loadtxt(directory + '/eigenBasis')
         with open(directory + '/labels','r') as f:
             dfm.labels = json.loads(f.read())
         dfm.trained = True
         return dfm
-    
+
     # Load a trained autoencoder model from a directory
-    def loadModel(self, path):
+    def load_model(self, path):
         self.encoder = keras.models.load_model(path + '/encoder')
         self.decoder = keras.models.load_model(path + '/decoder')
-        self.assembleAutoencoder()
+        self.assemble_autoencoder()
