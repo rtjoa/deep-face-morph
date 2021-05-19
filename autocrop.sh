@@ -1,0 +1,1 @@
+autocrop -i data/raw -o data/autocrop-preprocessed -r data/autocrop-rejected -w 128 -H 128 --facePercent 100
