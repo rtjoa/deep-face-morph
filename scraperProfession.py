@@ -4,7 +4,7 @@ import time
 import urllib.request
 
 USE_ARCHIVE = False # More reliable but slower
-START_AT = "january1" # Set to later to continue interrupted runs
+START_AT = "march15" # Set to later to continue interrupted runs
 
 if USE_ARCHIVE:
     domain = "https://web.archive.org"
@@ -53,7 +53,7 @@ def downloadDay(path):
     professions = soup.find_all('a',{'class':'group-item'})
     for profession in professions:
         downloadDayProfession(domain + profession.attrs['href'])
-        time.sleep(10)
+        time.sleep(6)
                 
 def downloadDayProfession(path):
     print(path)
@@ -61,7 +61,8 @@ def downloadDayProfession(path):
     soup = BeautifulSoup(result.content, "html.parser")
     ppl = soup.find_all('a',{'class':'person-item'})
     for person in ppl:
-        name = extractName(person.find('div',{'class':'name'}).contents[0])
+        divContents = person.find('div',{'class':'name'}).contents[0]
+        name = extractName(divContents)
         url = person.attrs['style'].split('(')[1].split(')')[0]
         if url != 'https://www.famousbirthdays.com/faces/large-default.jpg':
             print(name)
@@ -71,7 +72,7 @@ def downloadDayProfession(path):
                 print(e)
 
 def extractName(content):
-    result = content.split('\n')[1].split(',')[0].split(' (')[0].replace('/','')
+    result = content.strip().split(',')[0].split(' (')[0].replace('/','')
     if result[0] == ' ':
         result = result[1:]
     return result

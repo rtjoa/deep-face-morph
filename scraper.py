@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import time
 import urllib.request
 
-USE_ARCHIVE = True # More reliable but slower
+USE_ARCHIVE = False # More reliable but slower
 START_AT = "january1" # Set to later to continue interrupted runs
 
 if USE_ARCHIVE:
@@ -61,7 +61,7 @@ def downloadDay(path):
                 print(e)
 
 def extractName(content):
-    result = content.split('\n')[1].split(',')[0].split(' (')[0].replace('/','')
+    result = content.strip().split(',')[0].split(' (')[0].replace('/','')
     if result[0] == ' ':
         result = result[1:]
     return result
