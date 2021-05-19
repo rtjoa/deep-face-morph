@@ -71,7 +71,7 @@ def load_image():
             tk.messagebox.showinfo("Deep Face Morph", e.args[0])
 
 # Morph to current z's lookalike
-def loadLookalike():
+def load_lookalike():
     load_z(model.lookalike(z)['z'])
 
 # Animate morph to a new z
@@ -134,7 +134,7 @@ lookalike_text = tk.Label(right_bottom_panel, text="You look like")
 lookalike_text.pack(side=tk.TOP)
 
 lookalike_button = tk.Button(right_bottom_panel, text="",
-                             command=loadLookalike)
+                             command=load_lookalike)
 lookalike_button.pack(side=tk.BOTTOM)
 
 # Create sliders panel
