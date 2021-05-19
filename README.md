@@ -4,7 +4,7 @@ Compares significant features in faces with a convolutional autoencoder and prin
 
 ## Getting started
 
-Install with `requirements.txt` or the following commands in an Anaconda environment:
+Install with `requirements.txt` (recommended) or the following commands in an Anaconda environment:
 
 ```
 conda install python=3.7
@@ -17,7 +17,7 @@ pip install opencv-python
 
 To download and preprocess the training data (from an archive.org capture of famousbirthdays.com), run `scraper.py` then `preprocessor.py`.
 
-Train the model and run the main application with `dfm.py`.
+Train the model and run the main application with `deep_face_morph.py`.
 
 ## Model Overview
 
