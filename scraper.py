@@ -16,6 +16,10 @@ else:
 
 started = False
 
+illegal_chars = set('\\/:*?"<>|')
+def clean_filename(name):
+    return ''.join(c for c in name if c not in illegal_chars)
+
 def downloadYear(path):
     result = requests.get(path)
     soup = BeautifulSoup(result.content, "html.parser")
@@ -62,7 +66,7 @@ def downloadDayProfession(path):
     ppl = soup.find_all('a',{'class':'person-item'})
     for person in ppl:
         divContents = person.find('div',{'class':'name'}).contents[0]
-        name = extractName(divContents)
+        name = clean_filename(extractName(divContents))
         url = person.attrs['style'].split('(')[1].split(')')[0]
         if url != 'https://www.famousbirthdays.com/faces/large-default.jpg':
             print(name)
