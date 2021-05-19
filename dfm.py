@@ -8,11 +8,14 @@ import cv2
 import time
 from threading import Thread
 
-forceRebuild = False
+forceRebuild = True
 
 # Model settings
-dataFolder = 'data/preprocessed/'
-epochs = 10
+# Typically 'data/preprocessed/' or 'data/autocrop-preprocessed/'
+dataFolder = 'data/autocrop-preprocessed/'
+epochs = 50
+split_validation = True # whether to use a small portion of data for validation
+patience = 5 # if using validation: stop after this many rounds w/o improvement
 
 # Model structure
 inputShape = (128,128,3)
@@ -20,7 +23,7 @@ filterIncreasePerConv = 30
 convolutions = 4
 stride = 2
 kernelSize = 3
-latentDim = 1000
+latentDim = 400
 
 # Transformed latent vector of currently shown face
 z = np.zeros(latentDim)
@@ -95,7 +98,7 @@ except Exception:
     print("Building new model")
     model = DeepFaceModel()
     model.build(inputShape, latentDim, filterIncreasePerConv, convolutions, stride, kernelSize)
-    model.train(dataFolder, epochs)
+    model.train(dataFolder, epochs, split_validation, patience)
     model.save('model')
 
 z = model.transformedLatents[1].copy()
